@@ -114,6 +114,7 @@ export default function Identity() {
 export function ID({ details, onEdit }: IDProps){
   return(
       <ImageBackground source={require('../assets/images/flag-kenya.jpg')} style={styles.body} resizeMode="cover">
+        <View style={styles.cover}>
           <Text style={styles.headerText}>EXISTING USER DETAILS</Text>
           <ScrollView contentContainerStyle={{flexGrow: 1}}>
               <View style={styles.items}>
@@ -162,6 +163,7 @@ export function ID({ details, onEdit }: IDProps){
                   <Text style={styles.buttonText}>Edit details</Text>
               </TouchableOpacity>
           </ScrollView>
+          </View>
       </ImageBackground>
   );
 }
@@ -379,4 +381,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
+  cover: {
+        flex: 1,
+        backgroundColor: '#fff',
+        padding: 20,
+        verticalAlign: 'middle',
+        justifyContent: 'center',
+        opacity: 0.85    }
 });

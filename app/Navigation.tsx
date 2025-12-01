@@ -14,10 +14,9 @@ export default function Navigate(){
             
             // Determine the icon name based on the route
             if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
-            else if (route.name === 'SETTINGS') iconName = focused ? 'settings' : 'settings-outline';
-            else if (route.name === 'VOTE') iconName = focused ? 'checkbox' : 'checkbox-outline';
-            else if (route.name === 'QR CODE') iconName = focused ? 'qr-code' : 'qr-code-outline';
-            else if (route.name === 'select') iconName = focused ? 'rocket' : 'rocket-outline';
+            else if (route.name === 'SETTINGS') iconName = focused ? 'ellipse-outline' : 'settings-outline';
+            else if (route.name === 'QR CODE') iconName = focused ? 'ellipse-outline' : 'qr-code-outline';
+            else if (route.name === 'VOTE') iconName = focused ? 'ellipse-outline' : 'checkbox-outline';
             return <Ionicons name={iconName} size={size} color={color} />;
           },
           tabBarStyle: {

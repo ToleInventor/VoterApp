@@ -48,6 +48,7 @@ export default function QRCodeScreen() {
 
   return (
     <ImageBackground source={require('../assets/images/flag-kenya.jpg')} style={styles.body} resizeMode="cover">
+      <View style={styles.cover}>
       <Text style={styles.headerText}>VOTER IDENTITY QR CODE</Text>
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}>
         <View style={styles.qrContainer}>
@@ -70,6 +71,7 @@ export default function QRCodeScreen() {
           <Ionicons name='arrow-up' size={28} color={'#290667ff'}/>
         </View>
       </ScrollView>
+      </View>
     </ImageBackground>
   );
 }
@@ -110,6 +112,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 5,
+    opacity: 0.85
   },
   items: { 
     borderRadius: 8,
@@ -142,4 +145,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
   },
+  cover: {
+        flex: 1,
+        backgroundColor: '#fff',
+        padding: 20,
+        verticalAlign: 'middle',
+        justifyContent: 'center',
+        opacity: 0.85
+    }
 });
