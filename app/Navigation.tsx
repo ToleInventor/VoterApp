@@ -1,0 +1,35 @@
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import QR from "./QRSCREEN";
+import Setti from "./Settings";
+import Vote from "./Vote";
+
+export default function Navigate(){
+    const Tabs = createBottomTabNavigator();
+    return(
+        <Tabs.Navigator
+        screenOptions={({ route }) => ({
+          tabBarIcon: ({ focused, color, size }) => {
+            let iconName: string = 'alert-circle'; 
+            
+            // Determine the icon name based on the route
+            if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
+            else if (route.name === 'SETTINGS') iconName = focused ? 'settings' : 'settings-outline';
+            else if (route.name === 'VOTE') iconName = focused ? 'checkbox' : 'checkbox-outline';
+            else if (route.name === 'QR CODE') iconName = focused ? 'qr-code' : 'qr-code-outline';
+            else if (route.name === 'select') iconName = focused ? 'rocket' : 'rocket-outline';
+            return <Ionicons name={iconName} size={size} color={color} />;
+          },
+          tabBarStyle: {
+            backgroundColor: '#383535ff', // Dark background for the tab bar
+          },
+          tabBarActiveTintColor: 'white',
+          tabBarInactiveTintColor: '#bbb1b1ff',
+        })}
+        > 
+            <Tabs.Screen name="VOTE" component={ Vote }/>
+            <Tabs.Screen name="QR CODE" component={ QR }/>
+            <Tabs.Screen name="SETTINGS" component={ Setti }/>
+        </Tabs.Navigator>
+    );
+}
