@@ -1,41 +1,63 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ImageBackground, ScrollView, StyleSheet, Text, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { getProfile, subscribeToProfileChanges, UnifiedProfile } from '../lib/storageHelper';
 
 export default function QRCodeScreen() {
   const [detailsString, setDetailsString] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    async function loadDetails() {
-      try {
-        // Correctly get user details from AsyncStorage keys
-        const id = await AsyncStorage.getItem('userDetailsss');
-        const voter = await AsyncStorage.getItem('userDetailss');
-        const geo = await AsyncStorage.getItem('geoSettings');
-
-        // Compose a JSON string only if all exist
-        if (id && voter && geo) {
-          const storedDetails = JSON.stringify({
-            ID: id,
-            VOTERD: voter,
-            GEOD: geo,
-          });
-          setDetailsString(storedDetails);
-        } else {
-          setDetailsString('');
-        }
-      } catch (error) {
-        console.error('Error loading user details:', error);
+  const loadProfileForQR = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const profile: UnifiedProfile | null = await getProfile();
+      
+      if (profile) {
+        // ✅ COMPATIBLE WITH UNIFIED PROFILE - ALL FIELDS SYNCED
+        const qrData = {
+          // ID Details
+          serialNo: profile.serialNo,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          surname: profile.surname,
+          idNumber: profile.idNumber,
+          dateOfBirth: profile.dateOfBirth,
+          sex: profile.sex,
+          districtOfBirth: profile.districtOfBirth,
+          placeOfIssue: profile.placeOfIssue,
+          dateOfIssue: profile.dateOfIssue,
+          
+          // Voter Details
+          electorsNumber: profile.electorsNumber,
+          fullName: profile.fullName,
+          
+          // Geo Details
+          registrationCentre: profile.registrationCentre,
+          pollingStation: profile.pollingStation,
+          pollingWard: profile.pollingWard,
+          constituency: profile.constituency,
+          county: profile.county,
+        };
+        
+        setDetailsString(JSON.stringify(qrData, null, 2));
+      } else {
         setDetailsString('');
-      } finally {
-        setIsLoading(false);
       }
+    } catch (error) {
+      console.error('Error loading user details for QR:', error);
+      setDetailsString('');
+    } finally {
+      setIsLoading(false);
     }
-    loadDetails();
   }, []);
+
+  // ✅ LIVE SYNC - Updates when ANY screen (ID/VoterD/GeoSett) saves
+  useEffect(() => {
+    loadProfileForQR();
+    const unsubscribe = subscribeToProfileChanges(loadProfileForQR);
+    return unsubscribe;
+  }, [loadProfileForQR]);
 
   if (isLoading) {
     return (
@@ -49,28 +71,30 @@ export default function QRCodeScreen() {
   return (
     <ImageBackground source={require('../assets/images/flag-kenya.jpg')} style={styles.body} resizeMode="cover">
       <View style={styles.cover}>
-      <Text style={styles.headerText}>VOTER IDENTITY QR CODE</Text>
-      <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}>
-        <View style={styles.qrContainer}>
-          {detailsString ? (
-            <QRCode 
-              value={detailsString} 
-              size={200} 
-              color="#2907c0ff" 
-              backgroundColor="white" 
-            />
-          ) : (
-            <View style={styles.noDataContainer}>
-              <Text style={styles.noDataText}>No ID details found</Text>
-            </View>
-          )}
-        </View>
-        <View style={styles.items}>
-          <Ionicons name='arrow-up' size={28} color={'#290667ff'}/>
-          <Text style={styles.text}>Scan the above QR code to verify identity</Text>
-          <Ionicons name='arrow-up' size={28} color={'#290667ff'}/>
-        </View>
-      </ScrollView>
+        <Text style={styles.headerText}>VOTER IDENTITY QR CODE</Text>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}>
+          <View style={styles.qrContainer}>
+            {detailsString ? (
+              <QRCode 
+                value={detailsString} 
+                size={200} 
+                color="#2907c0ff" 
+                backgroundColor="white" 
+              />
+            ) : (
+              <View style={styles.noDataContainer}>
+                <Ionicons name="person-off-outline" size={64} color="#ccc" />
+                <Text style={styles.noDataText}>No voter profile found</Text>
+                <Text style={styles.noDataSubText}>Complete ID, Voter, and Geo settings first</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.items}>
+            <Ionicons name='arrow-up' size={28} color={'#290667ff'}/>
+            <Text style={styles.text}>Scan the above QR code to verify identity</Text>
+            <Ionicons name='arrow-up' size={28} color={'#290667ff'}/>
+          </View>
+        </ScrollView>
       </View>
     </ImageBackground>
   );
@@ -136,8 +160,16 @@ const styles = StyleSheet.create({
   },
   noDataText: {
     color: '#666',
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: 'bold',
     textAlign: 'center',
+    marginTop: 10,
+  },
+  noDataSubText: {
+    color: '#999',
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 5,
   },
   text: { 
     color: '#fff',
@@ -146,11 +178,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   cover: {
-        flex: 1,
-        backgroundColor: '#fff',
-        padding: 20,
-        verticalAlign: 'middle',
-        justifyContent: 'center',
-        opacity: 0.85
-    }
+    flex: 1,
+    backgroundColor: 'black',
+    padding: 20,
+    verticalAlign: 'middle',
+    justifyContent: 'center',
+    opacity: 0.8
+  }
 });

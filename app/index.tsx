@@ -31,10 +31,10 @@ export default function Index(){
                 <Text style={styles.textt}>
                     {Message ? Message : 'Welcome back user! Kindly login to continue'}
                 </Text>
-                <Text style={styles.text}>ID NUMBER</Text>
+                <Text style={styles.text}>USERNAME</Text>
                 <TextInput 
                     style={styles.input}
-                    keyboardType='numeric'
+                    keyboardType='web-search'
                     value={id}
                     onChangeText={(text) => CreateID(text)}
                     placeholder='Enter your ID number here'

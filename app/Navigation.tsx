@@ -16,7 +16,7 @@ export default function Navigate(){
             if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
             else if (route.name === 'SETTINGS') iconName = focused ? 'ellipse-outline' : 'settings-outline';
             else if (route.name === 'QR CODE') iconName = focused ? 'ellipse-outline' : 'qr-code-outline';
-            else if (route.name === 'VOTE') iconName = focused ? 'ellipse-outline' : 'checkbox-outline';
+            else if (route.name === 'GENERATE FOR OTHER') iconName = focused ? 'ellipse-outline' : 'checkbox-outline';
             return <Ionicons name={iconName} size={size} color={color} />;
           },
           tabBarStyle: {
@@ -26,9 +26,9 @@ export default function Navigate(){
           tabBarInactiveTintColor: '#bbb1b1ff',
         })}
         > 
-            <Tabs.Screen name="VOTE" component={ Vote }/>
             <Tabs.Screen name="QR CODE" component={ QR }/>
             <Tabs.Screen name="SETTINGS" component={ Setti }/>
+            <Tabs.Screen name="GENERATE FOR OTHER" component={ Vote }/>
         </Tabs.Navigator>
     );
 }

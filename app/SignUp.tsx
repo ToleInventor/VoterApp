@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Link, router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, ImageBackground, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
@@ -28,7 +28,19 @@ export default function CreateAcc(){
     const [pass1, addPass1] = useState('');
     const [pass2, addPass2] = useState('');
     const [message, setMessage] = useState('');
-
+    
+    useEffect(() => {
+        const checkCreated = async () => {
+            const value = await AsyncStorage.getItem('created');
+            if (value) {
+                setMessage('Account already created! Please login.');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                router.push('/');
+            }
+        };
+        checkCreated();
+    }, []);
+    
     const handleCreate = async () => {
         if (!id || !pass1 || !pass2) {
             setMessage('Please fill all fields');
@@ -39,12 +51,12 @@ export default function CreateAcc(){
         if (success) {
             setMessage('Account created successfully!');
             Alert.alert('Success', 'Account created!');
+            await AsyncStorage.setItem('created', 'true');
             router.push('/')
         } else {
             setMessage('Account creation failed - ID exists or passwords don\'t match');
         }
     };
-
     return(
         <ImageBackground source={require('../assets/images/flag-kenya.jpg')} style={styles.body}>
             <View style={styles.uppercontainer}>
@@ -55,10 +67,10 @@ export default function CreateAcc(){
                     {message ? message : 'Welcome user! Kindly Create an account to continue'}
                 </Text>
             <View style={styles.cont}>
-                <Text style={styles.textu}>ID NUMBER</Text>
+                <Text style={styles.textu}>USERNAME</Text>
                 <TextInput 
                     style={styles.input}
-                    keyboardType='numeric'
+                    keyboardType='web-search'
                     value={id}
                     onChangeText={addID}
                     placeholder='Enter your ID number here'
