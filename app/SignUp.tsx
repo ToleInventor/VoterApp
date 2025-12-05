@@ -116,46 +116,59 @@ const styles=StyleSheet.create({
     body: {
         backgroundColor: 'blue',
         flex: 1,
-        justifyContent: 'flex-end'
     },
     uppercontainer: {
-        backgroundColor: '#f4f6faff',
-        flex: 0.75,
+        backgroundColor: 'black',
+        flex: 1,
         borderTopLeftRadius: 40,
         borderTopRightRadius: 40,
         overflow: 'hidden',
-        opacity: 0.8
+        opacity: 0.8,
+        justifyContent: 'center'
     },
     text: {
-        color: '#220e79ff',
-        fontWeight: 'bold',
-        paddingVertical: 10
-    },
-    textu: {
-        color: '#220e79ff',
-        fontWeight: 'bold',
-        paddingVertical: 10,
-    },
-    textt: {
-        color: '#8f80cfff',
-        fontSize: 19,
+        color: '#d2dae1ff',
         fontWeight: 'bold',
         padding: 10,
-        textAlign: 'center'
+        fontSize: 18
+    },
+    textu: {
+        color: '#d2dae1ff',
+        fontWeight: 'bold',
+        padding: 10,
+        textAlign: 'center',
+        fontSize: 18
+    },
+    textt: {
+        color: '#d2dae1ff',
+        fontWeight: 'bold',
+        padding: 10,
+        textAlign: 'center',
+        fontSize: 18
     },
     input: {
         borderColor: 'blue',
+        backgroundColor: '#c4c8e1ff',
         borderWidth: 2,
         padding: 10,
         borderRadius: 9
     },
     cont: {
+        padding: 10,
+        borderColor: '#b6b2edff',
+        maxWidth: 350,
+        maxHeight: 500,
+        minHeight: 320,
+        minWidth: 300,
+        opacity: 0.7,
+        justifyContent: 'center',
+        alignSelf: 'center',
+        backgroundColor: '#302b2bff',
+        borderRadius: 10,
         borderTopWidth: 4,
         borderBottomWidth: 4,
-        padding: 10,
-        borderTopRightRadius: 10,
-        borderBottomLeftRadius: 10,
-        borderColor: '#08a83eff'
+        borderStartWidth: 4,
+        borderEndWidth: 4
     },
     loginButtonContainer: {
         alignItems: 'flex-end', 

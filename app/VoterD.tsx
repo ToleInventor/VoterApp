@@ -1,21 +1,29 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    ImageBackground,
-    KeyboardTypeOptions,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ImageBackground,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { getProfile, saveProfile, subscribeToProfileChanges, UnifiedProfile } from '../lib/storageHelper';
 
+const COUNTY_DATA: Record<string, { constituencies: Record<string, { wards: Record<string, string[]> }> }> = {
+  Nairobi: { constituencies: { Westlands: { wards: { Westlands: ['Station A', 'Station B'], Kitisuru: ['Station C'] } } } },
+  Mombasa: { constituencies: { Kisauni: { wards: { Kisauni: ['Station D'] } } } },
+};
+
 interface UserDetails {
   electorsNumber: string;
+  firstName: string;
+  lastName: string;
+  surname: string;
   fullName: string;
   idNumber: string;
   registrationCentre: string;
@@ -35,39 +43,41 @@ interface NewProps {
   initialData?: UserDetails;
 }
 
-interface InputFieldProps {
-  label: string;
-  value: string;
-  onChangeKey: (text: string) => void;
-  placeholder: string;
-  keyboardType?: KeyboardTypeOptions;
-  maxLength?: number;
-}
-
-const InputField = React.memo(function InputField({
-  label,
-  value,
-  onChangeKey,
-  placeholder,
-  keyboardType = 'default',
-  maxLength,
-}: InputFieldProps) {
+function PickerModal({
+  visible,
+  title,
+  items,
+  onClose,
+  onSelect,
+}: {
+  visible: boolean;
+  title: string;
+  items: string[];
+  onClose: () => void;
+  onSelect: (item: string) => void;
+}) {
   return (
-    <View style={styles.inputArea}>
-      <Text style={styles.label}>{label}:</Text>
-      <TextInput
-        style={styles.input}
-        value={value}
-        onChangeText={onChangeKey}
-        placeholder={placeholder}
-        placeholderTextColor="#ccc"
-        keyboardType={keyboardType}
-        maxLength={maxLength}
-      />
+    <View>
+      <Modal visible={visible} transparent animationType="fade">
+        <View style={styles.modalBackground}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalHeader}>{title}</Text>
+            <ScrollView>
+              {items.map((it) => (
+                <TouchableOpacity key={it} onPress={() => onSelect(it)} style={styles.modalItem}>
+                  <Text style={styles.modalText}>{it}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <TouchableOpacity style={styles.modalClose} onPress={onClose}>
+              <Text style={styles.modalCloseText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
-});
-InputField.displayName = 'InputField';
+}
 
 export default function VoterDetails() {
   const [userType, setUserType] = useState<'loading' | 'new' | 'existing'>('loading');
@@ -76,10 +86,14 @@ export default function VoterDetails() {
   const loadProfile = useCallback(async () => {
     try {
       const profile = await getProfile();
-      if (profile?.electorsNumber || profile?.fullName) {
+      if (profile?.electorsNumber) {
+        const fullName = [profile.firstName, profile.lastName, profile.surname].filter(Boolean).join(' ');
         setUserDetails({
           electorsNumber: profile.electorsNumber || '',
-          fullName: profile.fullName || '',
+          firstName: profile.firstName || '',
+          lastName: profile.lastName || '',
+          surname: profile.surname || '',
+          fullName,
           idNumber: profile.idNumber || '',
           registrationCentre: profile.registrationCentre || '',
           pollingStation: profile.pollingStation || '',
@@ -117,13 +131,9 @@ export default function VoterDetails() {
   }
 
   return (
-    <ImageBackground
-      source={require('../assets/images/flag-kenya.jpg')}
-      style={styles.body}
-      resizeMode="cover"
-    >
+    <ImageBackground source={require('../assets/images/flag-kenya.jpg')} style={styles.body}>
       <View style={styles.overlay}>
-        <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}>
           {userType === 'existing' ? (
             <ID details={userDetails!} onEdit={() => setUserType('new')} />
           ) : (
@@ -156,6 +166,9 @@ export function ID({ details, onEdit }: IDProps) {
 export function New({ onSave, initialData }: NewProps) {
   const [formData, setFormData] = useState<UserDetails>({
     electorsNumber: initialData?.electorsNumber || '',
+    firstName: initialData?.firstName || '',
+    lastName: initialData?.lastName || '',
+    surname: initialData?.surname || '',
     fullName: initialData?.fullName || '',
     idNumber: initialData?.idNumber || '',
     registrationCentre: initialData?.registrationCentre || '',
@@ -164,25 +177,46 @@ export function New({ onSave, initialData }: NewProps) {
     constituency: initialData?.constituency || '',
     county: initialData?.county || '',
   });
+
   const [isSaving, setIsSaving] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalData, setModalData] = useState<string[]>([]);
+  const [modalField, setModalField] = useState<keyof UserDetails | null>(null);
 
-  const updateField = useCallback((key: keyof UserDetails, value: string) => {
-    setFormData((prev) => ({ ...prev, [key]: value }));
-  }, []);
+  const openModal = (field: keyof UserDetails, data: string[]) => {
+    setModalField(field);
+    setModalData(data);
+    setModalVisible(true);
+  };
 
-  const handlers = useMemo(
-    () => ({
-      electorsNumber: (val: string) => updateField('electorsNumber', val),
-      fullName: (val: string) => updateField('fullName', val),
-      idNumber: (val: string) => updateField('idNumber', val),
-      registrationCentre: (val: string) => updateField('registrationCentre', val),
-      pollingStation: (val: string) => updateField('pollingStation', val),
-      pollingWard: (val: string) => updateField('pollingWard', val),
-      constituency: (val: string) => updateField('constituency', val),
-      county: (val: string) => updateField('county', val),
-    }),
-    [updateField]
-  );
+  const selectItem = (item: string) => {
+    if (!modalField) return;
+    const newData = { ...formData, [modalField]: item };
+
+    if (modalField === 'county') {
+      newData.constituency = '';
+      newData.pollingWard = '';
+      newData.pollingStation = '';
+    }
+    if (modalField === 'constituency') {
+      newData.pollingWard = '';
+      newData.pollingStation = '';
+    }
+    if (modalField === 'pollingWard') newData.pollingStation = '';
+
+    setFormData(newData);
+    setModalVisible(false);
+  };
+
+  const updateFullName = useCallback(() => {
+    const fullName = [formData.firstName, formData.lastName, formData.surname].filter(Boolean).join(' ');
+    setFormData((prev) => ({ ...prev, fullName }));
+  }, [formData.firstName, formData.lastName, formData.surname]);
+
+  useEffect(() => {
+    updateFullName();
+  }, [formData.firstName, formData.lastName, formData.surname, updateFullName]);
+
 
   const handleSubmission = useCallback(async () => {
     if (!formData.fullName || !formData.idNumber || !formData.electorsNumber) {
@@ -191,106 +225,117 @@ export function New({ onSave, initialData }: NewProps) {
     }
     setIsSaving(true);
     try {
-      const profile = (await getProfile()) || ({} as UnifiedProfile);
-      await saveProfile({ ...profile, ...formData });
-      Alert.alert('Success', initialData ? 'Details updated successfully!' : 'Details saved and voter profile created.');
+      const profile: UnifiedProfile = {
+        countyOfBirth: '',
+        ...formData,
+      };
+      await saveProfile(profile);
+      Alert.alert('Success', 'Voter profile saved successfully.');
       onSave(formData);
     } catch {
-      Alert.alert('Error saving data', 'There was an issue saving your details.');
+      Alert.alert('Error', 'There was an issue saving your details.');
     } finally {
       setIsSaving(false);
     }
-  }, [formData, initialData, onSave]);
+  }, [formData, onSave]);
 
   return (
     <View style={styles.card}>
-      <Text style={styles.headerText}>{initialData ? 'EDIT VOTER DETAILS' : 'NEW VOTER REGISTRATION'}</Text>
-      {Object.entries(formData).map(([key, value]) => (
-        <InputField
-          key={key}
-          label={key.replace(/([A-Z])/g, ' $1')}
-          value={value}
-          onChangeKey={handlers[key as keyof UserDetails]}
-          placeholder={`Enter ${key.replace(/([A-Z])/g, ' $1')}`}
-        />
+      <Text style={styles.headerText}>NEW VOTER REGISTRATION</Text>
+
+      {/* Text inputs for firstName, lastName, surname, idNumber, registrationCentre */}
+      {['firstName', 'lastName', 'surname', 'idNumber', 'registrationCentre'].map((key) => (
+        <View key={key} style={styles.inputArea}>
+          <Text style={styles.label}>{key.charAt(0).toUpperCase() + key.slice(1)}</Text>
+          <TextInput
+            style={styles.input}
+            placeholder={key.charAt(0).toUpperCase() + key.slice(1)}
+            placeholderTextColor="#ccc"
+            value={formData[key as keyof UserDetails] as string}
+            onChangeText={(text) => setFormData({ ...formData, [key]: text })}
+          />
+        </View>
       ))}
+
+      {/* County → Constituency → Ward → Station */}
+      <TouchableOpacity style={styles.inputArea} onPress={() => openModal('county', Object.keys(COUNTY_DATA))}>
+        <Text style={styles.label}>County</Text>
+        <Text style={styles.input}>{formData.county || 'Select County'}</Text>
+      </TouchableOpacity>
+
+      {formData.county && (
+        <TouchableOpacity
+          style={styles.inputArea}
+          onPress={() => openModal('constituency', Object.keys(COUNTY_DATA[formData.county].constituencies))}
+        >
+          <Text style={styles.label}>Constituency</Text>
+          <Text style={styles.input}>{formData.constituency || 'Select Constituency'}</Text>
+        </TouchableOpacity>
+      )}
+
+      {formData.constituency && (
+        <TouchableOpacity
+          style={styles.inputArea}
+          onPress={() =>
+            openModal(
+              'pollingWard',
+              Object.keys(COUNTY_DATA[formData.county].constituencies[formData.constituency].wards)
+            )
+          }
+        >
+          <Text style={styles.label}>Polling Ward</Text>
+          <Text style={styles.input}>{formData.pollingWard || 'Select Ward'}</Text>
+        </TouchableOpacity>
+      )}
+
+      {formData.pollingWard && (
+        <TouchableOpacity
+          style={styles.inputArea}
+          onPress={() =>
+            openModal(
+              'pollingStation',
+              COUNTY_DATA[formData.county].constituencies[formData.constituency].wards[formData.pollingWard]
+            )
+          }
+        >
+          <Text style={styles.label}>Polling Station</Text>
+          <Text style={styles.input}>{formData.pollingStation || 'Select Station'}</Text>
+        </TouchableOpacity>
+      )}
+
       {isSaving ? (
         <ActivityIndicator size="large" color="#b15252" style={{ marginTop: 30 }} />
       ) : (
         <TouchableOpacity style={styles.actionButton} onPress={handleSubmission}>
           <Ionicons name="checkmark-circle-outline" size={24} color="white" />
-          <Text style={styles.buttonText}>{initialData ? 'Update Details' : 'Save and Continue'}</Text>
+          <Text style={styles.buttonText}>Save and Continue</Text>
         </TouchableOpacity>
       )}
+
+      <PickerModal visible={modalVisible} title={modalField || ''} items={modalData} onClose={() => setModalVisible(false)} onSelect={selectItem} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   body: { flex: 1 },
-  overlay: {
-    flex: 1,
-    backgroundColor: '#08032eff',
-    opacity: 0.8,
-    padding: 20,
-  },
-  card: {
-    backgroundColor: 'rgba(16, 166, 116, 0.9)',
-    padding: 20,
-    borderRadius: 15,
-    marginVertical: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  headerText: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: 'white',
-    textAlign: 'center',
-    marginBottom: 15,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 10,
-  },
-  navItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 15,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    marginVertical: 5,
-    alignItems: 'center',
-  },
+  overlay: { flex: 1, backgroundColor: '#08032eff', opacity: 0.9, padding: 20 },
+  card: { backgroundColor: 'rgba(16, 166, 116, 0.9)', padding: 20, borderRadius: 15, marginVertical: 10 },
+  headerText: { fontSize: 22, fontWeight: 'bold', color: 'white', textAlign: 'center', marginBottom: 15 },
+  navItem: { flexDirection: 'row', justifyContent: 'space-between', padding: 15, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 5 },
   navText: { color: 'white', fontWeight: 'bold', fontSize: 18 },
   navValue: { color: '#661adfff', fontWeight: 'bold', fontSize: 18 },
-  inputArea: {
-    borderRadius: 12,
-    padding: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    marginVertical: 5,
-  },
-  label: { color: 'white', fontWeight: 'bold', fontSize: 16, marginBottom: 4 },
-  input: { color: 'white', fontSize: 16, padding: 8 },
-  actionButton: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#b15252ff',
-    height: 50,
-    width: '70%',
-    alignSelf: 'center',
-    borderRadius: 12,
-    marginTop: 20,
-    flexDirection: 'row',
-    gap: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 5,
-  },
+  inputArea: { borderRadius: 12, padding: 12, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 5, flexDirection: 'row', justifyContent: 'space-between' },
+  label: { color: 'white', fontWeight: 'bold', fontSize: 16 },
+  input: { color: 'white', fontSize: 16 },
+  actionButton: { justifyContent: 'center', alignItems: 'center', backgroundColor: '#b15252ff', height: 50, width: '70%', alignSelf: 'center', borderRadius: 12, marginTop: 20, flexDirection: 'row', gap: 10 },
   buttonText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  modalBackground: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000000aa' },
+  modalCard: { width: '85%', backgroundColor: 'white', borderRadius: 12, padding: 20, maxHeight: '70%' },
+  modalHeader: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, color: '#333', textAlign: 'center' },
+  modalItem: { backgroundColor: 'white', padding: 15, marginVertical: 5, borderRadius: 8 },
+  modalText: { color: 'black', fontSize: 18, fontWeight: 'bold', borderBottomWidth: 2, borderRadius: 5, paddingStart: 6 },
+  modalClose: { backgroundColor: '#b15252', padding: 15, borderRadius: 8, marginTop: 10, alignItems: 'center' },
+  modalCloseText: { color: 'white', fontSize: 16, fontWeight: 'bold' },
 });

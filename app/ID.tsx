@@ -5,6 +5,7 @@ import {
   Alert,
   ImageBackground,
   KeyboardTypeOptions,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -24,6 +25,7 @@ interface UserDetails {
   idNumber: string;
   dateOfBirth: string;
   sex: string;
+  county: string;
   districtOfBirth: string;
   placeOfIssue: string;
   dateOfIssue: string;
@@ -109,7 +111,8 @@ const DatePickerInput = React.memo(function DatePickerInput({
     <View style={styles.inputArea}>
       <Text style={styles.text}>{label}:</Text>
       <TouchableOpacity style={styles.inputAreaa} onPress={() => setShowPicker(true)}>
-        <Ionicons name="calendar-number" size={28} color="white" />
+        <Ionicons name="calendar-number" size={24} color="white" />
+        <Text style={{ color: 'white', marginLeft: 8 }}>{value || 'Select date'}</Text>
       </TouchableOpacity>
       {showPicker && (
         <DateTimePicker value={dateObject} mode="date" display="default" onChange={handleDateChange} />
@@ -118,6 +121,107 @@ const DatePickerInput = React.memo(function DatePickerInput({
   );
 });
 DatePickerInput.displayName = 'DatePickerInput';
+
+const COUNTY_DATA: Record<
+  string,
+  {
+    subcounties: string[];
+  }
+> = {
+  'Nairobi': {
+    subcounties: ['Westlands', 'Embakasi', "Lang'ata", 'Kasarani'],
+  },
+ 'Mombasa': {
+    subcounties: ['Kisauni', 'Likoni', 'Nyali', 'Jomvu'],
+  },
+  'Kisumu': {
+    subcounties: ['Kisumu Central', 'Kisumu East', 'Kisumu West', 'Seme'],
+  },
+  'Taita-Taveta': {
+    subcounties: ['Wundanyi', 'Voi', "Taveta"],
+  },
+};
+
+function PickerModal({
+  visible,
+  title,
+  items,
+  onClose,
+  onSelect,
+}: {
+  visible: boolean;
+  title: string;
+  items: string[];
+  onClose: () => void;
+  onSelect: (item: string) => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="fade">
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}>
+        <View style={{ backgroundColor: '#fff', width: '86%', maxHeight: '70%', borderRadius: 12, padding: 16 }}>
+          <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 12, textAlign: 'center' }}>{title}</Text>
+          <ScrollView>
+            {items.map((it) => (
+              <TouchableOpacity
+                key={it}
+                onPress={() => {
+                  onSelect(it);
+                }}
+                style={{ paddingVertical: 10, borderBottomWidth: 2, borderRadius: 5, paddingStart: 4 }}
+              >
+                <Text style={{ fontSize: 16 }}>{it}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <TouchableOpacity
+            onPress={onClose}
+            style={{ marginTop: 12, alignSelf: 'center', backgroundColor: '#eee', padding: 10, borderRadius: 8, width: '60%' }}
+          >
+            <Text style={{ textAlign: 'center' }}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function SexPicker({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <>
+      <View style={styles.inputArea}>
+        <Text style={styles.text}>Sex:</Text>
+        <TouchableOpacity style={{ padding: 10 }} onPress={() => setVisible(true)}>
+          <Text style={{ color: 'white', fontSize: 18 }}>{value ? value : 'Select'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      <Modal visible={visible} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ backgroundColor: '#fff', width: '80%', padding: 18, borderRadius: 12 }}>
+            <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 12 }}>Select Sex</Text>
+            {['Male ', 'Female '].map((g) => (
+              <TouchableOpacity
+                key={g}
+                onPress={() => {
+                  onChange(g);
+                  setVisible(false);
+                }}
+                style={{ paddingVertical: 10 }}
+              >
+                <Text style={{ fontSize: 18, textAlign: 'center' }}>{g}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity onPress={() => setVisible(false)} style={{ marginTop: 12, backgroundColor: '#eee', padding: 10, borderRadius: 8 }}>
+              <Text style={{ textAlign: 'center' }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </>
+  );
+}
 
 export default function Identity() {
   const [userType, setUserType] = useState<'loading' | 'new' | 'existing'>('loading');
@@ -135,6 +239,7 @@ export default function Identity() {
           idNumber: profile.idNumber || '',
           dateOfBirth: profile.dateOfBirth || '',
           sex: profile.sex || '',
+          county: profile.county || '',
           districtOfBirth: profile.districtOfBirth || '',
           placeOfIssue: profile.placeOfIssue || '',
           dateOfIssue: profile.dateOfIssue || '',
@@ -175,11 +280,7 @@ export default function Identity() {
     <ImageBackground source={require('../assets/images/flag-kenya.jpg')} style={styles.body}>
       <View style={styles.cover}>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1 }}>
-          {userType === 'existing' ? (
-            <ID details={userDetails!} onEdit={() => setUserType('new')} />
-          ) : (
-            <New onSave={handleDetailsSaved} initialData={userDetails!} />
-          )}
+          {userType === 'existing' ? <ID details={userDetails!} onEdit={() => setUserType('new')} /> : <New onSave={handleDetailsSaved} initialData={userDetails!} />}
         </ScrollView>
       </View>
     </ImageBackground>
@@ -219,6 +320,10 @@ export function ID({ details, onEdit }: IDProps) {
         <Text style={styles.textt}>{details.sex || 'N/A'}</Text>
       </View>
       <View style={styles.items}>
+        <Text style={styles.text}>County of Birth:</Text>
+        <Text style={styles.textt}>{details.county || 'N/A'}</Text>
+      </View>
+      <View style={styles.items}>
         <Text style={styles.text}>District of Birth:</Text>
         <Text style={styles.textt}>{details.districtOfBirth || 'N/A'}</Text>
       </View>
@@ -247,12 +352,17 @@ export function New({ onSave, initialData }: NewProps) {
     idNumber: initialData?.idNumber || '',
     dateOfBirth: initialData?.dateOfBirth || '',
     sex: initialData?.sex || '',
+    county: initialData?.county || '',
     districtOfBirth: initialData?.districtOfBirth || '',
     placeOfIssue: initialData?.placeOfIssue || '',
     dateOfIssue: initialData?.dateOfIssue || '',
   });
 
   const [isSaving, setIsSaving] = useState(false);
+
+  const [countyModalVisible, setCountyModalVisible] = useState(false);
+  const [districtModalVisible, setDistrictModalVisible] = useState(false);
+  const [placeModalVisible, setPlaceModalVisible] = useState(false);
 
   const updateField = useCallback((key: keyof UserDetails, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -268,10 +378,16 @@ export function New({ onSave, initialData }: NewProps) {
       sex: (val: string) => updateField('sex', val),
       districtOfBirth: (val: string) => updateField('districtOfBirth', val),
       placeOfIssue: (val: string) => updateField('placeOfIssue', val),
-      dateOfIssue: (val: string) => updateField('dateOfIssue', val), // Added dateOfIssue handler
+      dateOfIssue: (val: string) => updateField('dateOfIssue', val),
     }),
     [updateField]
   );
+
+  const countyList = useMemo(() => Object.keys(COUNTY_DATA), []);
+  const subcountyListForSelectedCounty = useMemo(() => {
+    if (!formData.county) return [];
+    return COUNTY_DATA[formData.county]?.subcounties || [];
+  }, [formData.county]);
 
   const handleSubmission = useCallback(async () => {
     if (!formData.firstName || !formData.idNumber || !formData.serialNo) {
@@ -284,7 +400,8 @@ export function New({ onSave, initialData }: NewProps) {
       await saveProfile({ ...profile, ...formData });
       Alert.alert('Success', initialData ? 'Details updated successfully!' : 'Details saved and user profile created.');
       onSave(formData);
-    } catch {
+    } catch (err) {
+      console.warn('save error', err);
       Alert.alert('Error saving data', 'There was an issue saving your details.');
     } finally {
       setIsSaving(false);
@@ -294,6 +411,7 @@ export function New({ onSave, initialData }: NewProps) {
   return (
     <View style={styles.cover}>
       <Text style={styles.headerText}>{initialData ? 'EDIT USER DETAILS' : 'NEW USER REGISTRATION'}</Text>
+
       <InputField
         label="Serial number"
         value={formData.serialNo}
@@ -301,6 +419,7 @@ export function New({ onSave, initialData }: NewProps) {
         placeholder="Enter Serial number"
         keyboardType="numeric"
       />
+
       <InputField label="First Name" value={formData.firstName} onChangeKey={handlers.firstName} placeholder="Enter First Name" />
       <InputField label="Last Name" value={formData.lastName} onChangeKey={handlers.lastName} placeholder="Enter Last Name" />
       <InputField label="Surname" value={formData.surname} onChangeKey={handlers.surname} placeholder="Enter Surname" />
@@ -312,11 +431,52 @@ export function New({ onSave, initialData }: NewProps) {
         keyboardType="numeric"
         maxLength={10}
       />
+
       <DatePickerInput label="Date of Birth" value={formData.dateOfBirth} onChange={(dateString) => updateField('dateOfBirth', dateString)} />
-      <InputField label="Sex" value={formData.sex} onChangeKey={handlers.sex} placeholder="M or F" maxLength={1} />
-      <InputField label="District of Birth" value={formData.districtOfBirth} onChangeKey={handlers.districtOfBirth} placeholder="Enter District" />
+
+      <SexPicker value={formData.sex} onChange={(val) => updateField('sex', val)} />
+
+      <View style={styles.inputArea}>
+        <Text style={styles.text}>County of Birth:</Text>
+        <TouchableOpacity onPress={() => setCountyModalVisible(true)} style={{ padding: 10 }}>
+          <Text style={{ color: 'white', fontSize: 16 }}>{formData.county || 'Select county'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.inputArea}>
+        <Text style={styles.text}>Subcounty:</Text>
+        <TouchableOpacity
+          onPress={() => {
+            if (!formData.county) {
+              Alert.alert('Select county first', 'Please select a county to choose its subcounties.');
+              return;
+            }
+            setDistrictModalVisible(true);
+          }}
+          style={{ padding: 10 }}
+        >
+          <Text style={{ color: 'white', fontSize: 16 }}>{formData.districtOfBirth || 'Select district'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.inputArea}>
+        <Text style={styles.text}>Place of Issue (subcounty):</Text>
+        <TouchableOpacity
+          onPress={() => {
+            if (!formData.county) {
+              Alert.alert('Select county first', 'Please select a county to choose its places of issue.');
+              return;
+            }
+            setPlaceModalVisible(true);
+          }}
+          style={{ padding: 10 }}
+        >
+          <Text style={{ color: 'white', fontSize: 16 }}>{formData.placeOfIssue || 'Select place of issue'}</Text>
+        </TouchableOpacity>
+      </View>
+
       <DatePickerInput label="Date of Issue" value={formData.dateOfIssue} onChange={(dateString) => updateField('dateOfIssue', dateString)} />
-      <InputField label="Place of Issue" value={formData.placeOfIssue} onChangeKey={handlers.placeOfIssue} placeholder="Enter Place of Issue" />
+
       {isSaving ? (
         <ActivityIndicator size="large" color="#b15252" style={{ marginTop: 30 }} />
       ) : (
@@ -325,6 +485,41 @@ export function New({ onSave, initialData }: NewProps) {
           <Text style={styles.buttonText}>{initialData ? 'Update Details' : 'Save and Continue'}</Text>
         </TouchableOpacity>
       )}
+
+      <PickerModal
+        visible={countyModalVisible}
+        title="Select County"
+        items={countyList}
+        onClose={() => setCountyModalVisible(false)}
+        onSelect={(county) => {
+          updateField('county', county);
+          updateField('districtOfBirth', '');
+          updateField('placeOfIssue', '');
+          setCountyModalVisible(false);
+        }}
+      />
+
+      <PickerModal
+        visible={districtModalVisible}
+        title={`Select District / Subcounty (${formData.county})`}
+        items={subcountyListForSelectedCounty}
+        onClose={() => setDistrictModalVisible(false)}
+        onSelect={(district) => {
+          updateField('districtOfBirth', district);
+          setDistrictModalVisible(false);
+        }}
+      />
+
+      <PickerModal
+        visible={placeModalVisible}
+        title={`Select Place of Issue (${formData.county})`}
+        items={subcountyListForSelectedCounty}
+        onClose={() => setPlaceModalVisible(false)}
+        onSelect={(place) => {
+          updateField('placeOfIssue', place);
+          setPlaceModalVisible(false);
+        }}
+      />
     </View>
   );
 }

@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -135,7 +136,11 @@ export function GeoSettingsView({ settings, onEdit }: IDProps) {
           <Text style={styles.navValue}>{value || 'N/A'}</Text>
         </View>
       ))}
-      <TouchableOpacity style={styles.actionButton} onPress={onEdit}>
+      <View style={{ flexDirection: 'row',}}>
+      <Text style={{ fontWeight: 'bold'}}>Note:</Text>
+      <Text style ={ { fontSize: 14, color: 'white' } }>In order to edit thid settings, you might be forced to edit them through the ID card or Voters Card interfaces</Text>
+      </View>
+      <TouchableOpacity style={styles.actionButton} onPress={ async ()=> {router.push('/VoterD')} }>
         <Ionicons name="create-outline" size={24} color="white" />
         <Text style={styles.buttonText}>Edit Settings</Text>
       </TouchableOpacity>

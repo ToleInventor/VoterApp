@@ -3,13 +3,25 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export const PROFILE_KEY = 'voterAppProfile';
 
 export interface UnifiedProfile {
-  serialNo?: string; firstName?: string; lastName?: string; surname?: string;
-  idNumber?: string; dateOfBirth?: string; sex?: string; districtOfBirth?: string;
-  placeOfIssue?: string; dateOfIssue?: string;
+  countyOfBirth: string;
+  serialNo?: string; 
+  firstName?: string; 
+  lastName?: string; 
+  surname?: string;
+  idNumber?: string; 
+  dateOfBirth?: string; 
+  sex?: string; 
+  districtOfBirth?: string;
+  placeOfIssue?: string; 
+  dateOfIssue?: string;
   newPlaceOfIssue?: string; 
-  electorsNumber?: string; fullName?: string;
-  registrationCentre?: string; pollingStation?: string; pollingWard?: string;
-  constituency?: string; county?: string;
+  electorsNumber?: string; 
+  fullName?: string;
+  registrationCentre?: string; 
+  pollingStation?: string; 
+  pollingWard?: string;
+  constituency?: string; 
+  county?: string;
 }
 
 let refreshListeners: (() => void)[] = [];

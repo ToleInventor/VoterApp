@@ -26,7 +26,7 @@ export default function Index(){
             <View style={styles.uppercontainer}>
             <View style={styles.cont}>
                 <View style={{alignItems: 'center', marginTop: 20 }}>
-                    <Ionicons name={'person-circle-outline'} size={150} color={'#000'}/>
+                    <Ionicons name={'person-circle-outline'} size={100} color={'#dcdaebff'}/>
                 </View>
                 <Text style={styles.textt}>
                     {Message ? Message : 'Welcome back user! Kindly login to continue'}
@@ -77,23 +77,23 @@ const styles = StyleSheet.create({
     body: {
         backgroundColor: '#0c0333ff',
         flex: 1,
-        justifyContent: 'flex-end'
     },
     uppercontainer: {
-        backgroundColor: '#f4f6faff',
-        flex: 0.75,
+        backgroundColor: 'black',
+        flex: 1,
         borderTopLeftRadius: 40,
         borderTopRightRadius: 40,
         overflow: 'hidden',
-        opacity: 0.8
+        opacity: 0.8,
+        justifyContent: 'center'
     },
     text: {
-        color: 'blue',
+        color: 'white',
         fontWeight: 'bold',
         paddingVertical: 10
     },
     textt: {
-        color: '#040125ff',
+        color: '#d2dae1ff',
         fontWeight: 'bold',
         padding: 10,
         textAlign: 'center',
@@ -101,16 +101,25 @@ const styles = StyleSheet.create({
     },
     input: {
         borderColor: 'blue',
+        backgroundColor: '#c4c8e1ff',
         borderWidth: 2,
         padding: 10,
         borderRadius: 9
     },
     cont: {
         padding: 10,
-        borderColor: '#08a83eff',
-        backgroundColor: 'white',
+        borderColor: '#b6b2edff',
+        maxWidth: 350,
+        maxHeight: 500,
         opacity: 0.7,
-        flex: 1
+        justifyContent: 'center',
+        alignSelf: 'center',
+        backgroundColor: '#302b2bff',
+        borderRadius: 10,
+        borderTopWidth: 4,
+        borderBottomWidth: 4,
+        borderStartWidth: 4,
+        borderEndWidth: 4
     },
     loginButtonContainer: {
         alignItems: 'flex-end', 
@@ -120,7 +129,7 @@ const styles = StyleSheet.create({
     loginButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#270d2eff',
+        backgroundColor: '#35d21dff',
         padding: 10,
         borderRadius: 5
     },
@@ -134,7 +143,7 @@ const styles = StyleSheet.create({
         marginTop: 20
     },
     signUpLinkText: {
-        color: '#070432ff',
+        color: 'white',
         textDecorationLine: 'underline',
         fontWeight: 'bold'
     }
