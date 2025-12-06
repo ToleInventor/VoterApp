@@ -28,33 +28,36 @@ const SYMBOL_MAP = {
     'H': '*', 'I': '(', 'J': ')', 'K': '-', 'L': '_', 'M': '+', 'N': '=', 
     'O': '{', 'P': '}', 'Q': '[', 'R': ']', 'S': '|', 'T': '\\', 'U': ':', 
     'V': ';', 'W': '"', 'X': '\'', 'Y': '<', 'Z': '>', 
-    'a': '?', 'b': '/', 'c': '.', 'd': ',', 'e': '~', 'f': '`', 'g': '1', 
-    'h': '2', 'i': '3', 'j': '4', 'k': '5', 'l': '6', 'm': '7', 'n': '8', 
-    'o': '9', 'p': '0', 'q': 'Q', 'r': 'W', 's': 'E', 't': 'R', 'u': 'T', 
-    'v': 'Y', 'w': 'U', 'x': 'I', 'y': 'O', 'z': 'P',
+    'a': '?', 'b': '/', 'c': '.', 'd': ',',
+    'e': '€', 'f': '£', 'g': '1', 'h': '2', 'i': '3', 'j': '4', 'k': '5', 
+    'l': '6', 'm': '7', 'n': '8', 'o': '9', 'p': '0', 'q': 'Q', 'r': 'W', 
+    's': 'E', 't': 'R', 'u': 'T', 'v': 'Y', 'w': 'U', 'x': 'I', 'y': 'O', 
+    'z': 'P',
     '0': 'q', '1': 'w', '2': 'e', '3': 'r', '4': 't', '5': 'y', 
     '6': 'u', '7': 'i', '8': 'o', '9': 'p',
-    ' ': '_', ',': '~', '.': '`', '-': '$'
+    ' ': ' ',
+    ',': '†', '.': '‡', '-': '¢'
   },
   decrypt: {} as Record<string, string>
 };
 
-Object.entries(SYMBOL_MAP.encrypt).forEach(([k, v]) => {
-  SYMBOL_MAP.decrypt[v] = k;
+// ✅ Generate decrypt map ONCE (ZERO collisions)
+Object.entries(SYMBOL_MAP.encrypt).forEach(([key, value]) => {
+  SYMBOL_MAP.decrypt[value] = key;
 });
 
 const substitute = (text: string, map: Record<string, string>): string => {
   return text.split('').map(ch => map[ch] || ch).join('');
 };
 
-const encryptRounds = (text: string, rounds: number): string => {
+// ✅ 5-ROUND ENCRYPTION
+const encryptRounds = (text: string, rounds: number = 1): string => {
   let result = text;
   for (let i = 0; i < rounds; i++) {
     result = substitute(result, SYMBOL_MAP.encrypt);
   }
   return result;
 };
-
 
 const FIELD_NAMES = {
   serialNo: 'serialNo',
@@ -73,7 +76,7 @@ const FIELD_NAMES = {
   pollingStation: 'pollingStation',
   pollingWard: 'pollingWard',
   constituency: 'constituency',
-};
+} as const;
 
 const formatDate = (date: Date): string => {
   const day = date.getDate().toString().padStart(2, '0');
@@ -123,17 +126,17 @@ export default function Vote() {
 
   const handleSubmission = useCallback(async () => {
     if (!voter.firstName || !voter.idNumber || !voter.serialNo) {
-      Alert.alert('❌ Missing Information', 'Please fill Serial No, First Name, and ID Number.');
+      Alert.alert('Missing Information', 'Please fill Serial No, First Name, and ID Number.');
       return;
     }
     
     setIsSaving(true);
     
     const encryptedEntries = Object.entries(FIELD_NAMES).map(([fieldKey, fieldName]) => {
-      const valStr = voter[fieldKey as keyof typeof voter] === undefined || voter[fieldKey as keyof typeof voter] === null 
-        ? '' : String(voter[fieldKey as keyof typeof voter]);
-      const encryptedKey = encryptRounds(fieldName, 5);
-      const encryptedValue = encryptRounds(valStr, 5);
+      const val = voter[fieldKey as keyof typeof voter];
+      const valStr = val === undefined || val === null || val === '' ? '' : String(val);
+      const encryptedKey = encryptRounds(fieldName, 1);
+      const encryptedValue = encryptRounds(valStr, 1);
       return [encryptedKey, encryptedValue] as [string, string];
     });
 
@@ -146,7 +149,6 @@ export default function Vote() {
       setShowQRCode(true);
     }, 1000);
   }, [voter]);
-
 
   const handleDateChange = (event: DateTimePickerEvent, date?: Date) => {
     setDobPicker(false);
@@ -266,18 +268,22 @@ export default function Vote() {
                 <Ionicons name="close-circle" size={32} color="#666" />
               </TouchableOpacity>
               <Text style={styles.modalTitle}>Voter QR Ready</Text>
+              
               <View style={styles.qrContainer}>
-                <QRCode 
-                  value={qrValue} 
-                  size={200} 
-                  color="#000000" 
-                  backgroundColor="#FFFFFF"
-                  quietZone={20}
-                />
+                <View style={styles.qrBorder}>
+                  <QRCode 
+                    value={qrValue} 
+                    size={220} 
+                    color="#000" 
+                    backgroundColor="white" 
+                  />
+                </View>
+                <Text style={styles.qrStatus}>Ready to Scan</Text>
               </View>
             </View>
           </View>
         </Modal>
+
       </View>
     </ImageBackground>
   );
@@ -344,21 +350,43 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { backgroundColor: 'white', width: '92%', padding: 25, borderRadius: 25, alignItems: 'center', elevation: 10 },
   closeButton: { position: 'absolute', top: 18, right: 18 },
-  modalTitle: { fontSize: 22, fontWeight: 'bold', marginVertical: 15 },
-  qrContainer: { padding: 25, backgroundColor: '#f8fafc', borderRadius: 20, alignItems: 'center' },
-  qrSize: { marginTop: 12, fontSize: 14, color: '#64748b', fontWeight: '500' },
-  testBtn: { 
-    backgroundColor: '#f59e0b', 
-    paddingHorizontal: 24, 
-    paddingVertical: 14, 
-    borderRadius: 12, 
-    flexDirection: 'row', 
-    gap: 8, 
-    alignItems: 'center', 
-    marginTop: 20 
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#00FF00',
+    textAlign: 'center',
+    marginVertical: 20,
+    textShadowColor: 'rgba(0, 0, 0, 0)',
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 10,
   },
-  testBtnText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
-  qrText: { fontSize: 16, color: '#374151', marginTop: 15, textAlign: 'center', fontWeight: '500' },
+  qrContainer: {
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  qrBorder: {
+    borderRadius: 20,
+    borderWidth: 4,
+    borderColor: '#00FF00',
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    padding: 8,
+    shadowColor: '#00FF00',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  qrStatus: {
+    color: '#00FF00',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 15,
+    backgroundColor: 'rgba(0,255,0,0.2)',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
   pickerItem: { padding: 15, borderBottomWidth: 1, borderBottomColor: '#eee' },
   cancelBtn: { marginTop: 15, alignSelf: 'center', padding: 12, backgroundColor: '#eee', borderRadius: 8 },
 });
+

@@ -244,7 +244,7 @@ export function New({ onSave, initialData }: NewProps) {
       <Text style={styles.headerText}>NEW VOTER REGISTRATION</Text>
 
       {/* Text inputs for firstName, lastName, surname, idNumber, registrationCentre */}
-      {['firstName', 'lastName', 'surname', 'idNumber', 'registrationCentre'].map((key) => (
+      {['electorsNumber', 'fullName', 'idNumber', 'registrationCentre'].map((key) => (
         <View key={key} style={styles.inputArea}>
           <Text style={styles.label}>{key.charAt(0).toUpperCase() + key.slice(1)}</Text>
           <TextInput

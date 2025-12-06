@@ -10,19 +10,22 @@ const SYMBOL_MAP = {
     'H': '*', 'I': '(', 'J': ')', 'K': '-', 'L': '_', 'M': '+', 'N': '=', 
     'O': '{', 'P': '}', 'Q': '[', 'R': ']', 'S': '|', 'T': '\\', 'U': ':', 
     'V': ';', 'W': '"', 'X': '\'', 'Y': '<', 'Z': '>', 
-    'a': '?', 'b': '/', 'c': '.', 'd': ',', 'e': '~', 'f': '`', 'g': '1', 
-    'h': '2', 'i': '3', 'j': '4', 'k': '5', 'l': '6', 'm': '7', 'n': '8', 
-    'o': '9', 'p': '0', 'q': 'Q', 'r': 'W', 's': 'E', 't': 'R', 'u': 'T', 
-    'v': 'Y', 'w': 'U', 'x': 'I', 'y': 'O', 'z': 'P',
+    'a': '?', 'b': '/', 'c': '.', 'd': ',',
+    'e': '€', 'f': '£', 'g': '1', 'h': '2', 'i': '3', 'j': '4', 'k': '5', 
+    'l': '6', 'm': '7', 'n': '8', 'o': '9', 'p': '0', 'q': 'Q', 'r': 'W', 
+    's': 'E', 't': 'R', 'u': 'T', 'v': 'Y', 'w': 'U', 'x': 'I', 'y': 'O', 
+    'z': 'P',
     '0': 'q', '1': 'w', '2': 'e', '3': 'r', '4': 't', '5': 'y', 
     '6': 'u', '7': 'i', '8': 'o', '9': 'p',
-    ' ': '_', ',': '~', '.': '`', '-': '$'
+    ' ': ' ',
+    ',': '†', '.': '‡', '-': '¢'
   },
   decrypt: {} as Record<string, string>
 };
 
-Object.entries(SYMBOL_MAP.encrypt).forEach(([k, v]) => {
-  SYMBOL_MAP.decrypt[v] = k;
+// ✅ Generate decrypt map (ZERO collisions - matches scanner)
+Object.entries(SYMBOL_MAP.encrypt).forEach(([key, value]) => {
+  SYMBOL_MAP.decrypt[value] = key;
 });
 
 const substitute = (text: string, map: Record<string, string>): string => {
@@ -55,7 +58,7 @@ const FIELD_NAMES = {
   pollingWard: 'pollingWard',
   constituency: 'constituency',
   county: 'county',
-};
+} as const;
 
 export default function QRCodeScreen() {
   const [detailsString, setDetailsString] = useState('');
@@ -68,10 +71,10 @@ export default function QRCodeScreen() {
       
       if (profile) {
         const encryptedEntries = Object.entries(FIELD_NAMES).map(([fieldKey, fieldName]) => {
-          const valStr = profile[fieldKey as keyof UnifiedProfile] === undefined || profile[fieldKey as keyof UnifiedProfile] === null 
-            ? '' : String(profile[fieldKey as keyof UnifiedProfile]);
-          const encryptedKey = encryptRounds(fieldName, 5);
-          const encryptedValue = encryptRounds(valStr, 5);
+          const val = profile[fieldKey as keyof UnifiedProfile];
+          const valStr = val === undefined || val === null || val === '' ? '' : String(val);
+          const encryptedKey = encryptRounds(fieldName, 1);
+          const encryptedValue = encryptRounds(valStr, 1);
           return [encryptedKey, encryptedValue] as [string, string];
         });
 
@@ -91,43 +94,59 @@ export default function QRCodeScreen() {
   useEffect(() => {
     loadProfileForQR();
     const unsubscribe = subscribeToProfileChanges(loadProfileForQR);
-    return unsubscribe;
+    return () => unsubscribe();
   }, [loadProfileForQR]);
 
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0000ff" />
-        <Text>Loading QR Code...</Text>
+        <ActivityIndicator size="large" color="#00FF00" />
+        <Text style={styles.loadingText}>Generating Voter QR Code...</Text>
       </View>
     );
   }
 
   return (
-    <ImageBackground source={require('../assets/images/flag-kenya.jpg')} style={styles.body} resizeMode="cover">
+    <ImageBackground 
+      source={require('../assets/images/flag-kenya.jpg')} 
+      style={styles.body} 
+      resizeMode="cover"
+    >
       <View style={styles.cover}>
         <Text style={styles.headerText}>VOTER IDENTITY QR CODE</Text>
-        <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}>
+        
+        <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.qrContainer}>
             {detailsString ? (
-              <QRCode 
-                value={detailsString} 
-                size={200} 
-                color="#2907c0ff" 
-                backgroundColor="white" 
-              />
+              <>
+                <View style={styles.qrBorder}>
+                  <QRCode 
+                    value={detailsString} 
+                    size={220} 
+                    color="#000" 
+                    backgroundColor="white" 
+                    linearGradient={['#00FF00', '#00CC00']}
+                  />
+                </View>
+                <Text style={styles.qrStatus}>✅ Ready to Scan</Text>
+              </>
             ) : (
               <View style={styles.noDataContainer}>
-                <Ionicons name="person-off-outline" size={64} color="#ccc" />
+                <Ionicons name="person-off-outline" size={80} color="#666" />
                 <Text style={styles.noDataText}>No voter profile found</Text>
-                <Text style={styles.noDataSubText}>Complete ID, Voter, and Geo settings first</Text>
+                <Text style={styles.noDataSubText}>
+                  Complete ID, Voter, and Geo settings first
+                </Text>
               </View>
             )}
           </View>
-          <View style={styles.items}>
-            <Ionicons name='arrow-up' size={28} color={'#290667ff'}/>
-            <Text style={styles.text}>Scan the above QR code to verify identity</Text>
-            <Ionicons name='arrow-up' size={28} color={'#290667ff'}/>
+          
+          <View style={styles.instructions}>
+            <Ionicons name="scan-outline" size={24} color="#fff" />
+            <Text style={styles.instructionText}>
+              Scan verify voter identity
+            </Text>
+            <Ionicons name="scan-outline" size={24} color="#fff" />
           </View>
         </ScrollView>
       </View>
@@ -143,81 +162,96 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.9)',
+  },
+  loadingText: {
+    color: '#00FF00',
+    fontSize: 16,
+    marginTop: 10,
+    fontWeight: 'bold',
+  },
+  cover: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    padding: 20,
   },
   headerText: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: 'white',
+    color: '#00FF00',
     textAlign: 'center',
-    marginVertical: 10,
+    marginVertical: 20,
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: {width: -1, height: 1},
-    textShadowRadius: 10
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 10,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 40,
   },
   qrContainer: {
-    borderRadius: 15,
-    borderEndColor: 'purple',
-    borderTopColor: 'purple',
-    borderEndWidth: 4,
-    borderBottomColor: 'blue',
-    borderStartWidth: 4,
-    borderStartColor: 'blue',
-    padding: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+    alignItems: 'center',
     marginVertical: 20,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 5,
-    opacity: 0.85
   },
-  items: { 
-    borderRadius: 8,
-    borderEndColor: 'purple',
-    borderTopColor: 'purple',
-    borderEndWidth: 3,
-    borderBottomColor: 'blue',
-    borderStartWidth: 3,
-    borderStartColor: 'blue',
+  qrBorder: {
+    borderRadius: 20,
+    borderWidth: 4,
+    borderColor: '#00FF00',
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    padding: 8,
+    shadowColor: '#00FF00',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  qrStatus: {
+    color: '#00FF00',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 15,
+    backgroundColor: 'rgba(0,255,0,0.2)',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  instructions: {
     flexDirection: 'row',
-    padding: 15,
-    backgroundColor: 'rgba(16, 166, 116, 0.9)', 
-    marginVertical: 10,
-    justifyContent: 'center',
+    padding: 20,
+    backgroundColor: 'rgba(0, 255, 0, 0.15)',
+    borderRadius: 15,
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'center',
+    gap: 15,
+    borderWidth: 2,
+    borderColor: 'rgba(0,255,0,0.3)',
+  },
+  instructionText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    flex: 1,
   },
   noDataContainer: {
     padding: 40,
     alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   noDataText: {
-    color: '#666',
+    color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginTop: 10,
+    marginTop: 15,
   },
   noDataSubText: {
-    color: '#999',
+    color: 'rgba(255,255,255,0.8)',
     fontSize: 14,
     textAlign: 'center',
-    marginTop: 5,
+    marginTop: 8,
   },
-  text: { 
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  cover: {
-    flex: 1,
-    backgroundColor: 'black',
-    padding: 20,
-    verticalAlign: 'middle',
-    justifyContent: 'center',
-    opacity: 0.8
-  }
 });
