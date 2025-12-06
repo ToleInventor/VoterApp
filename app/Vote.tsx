@@ -6,13 +6,12 @@ import {
   Alert,
   ImageBackground,
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
@@ -23,7 +22,60 @@ const COUNTY_DATA: Record<string, { subcounties: string[] }> = {
   'Taita-Taveta': { subcounties: ['Wundanyi', 'Voi', 'Taveta'] },
 };
 
-const formatDate = (date: Date) => {
+const SYMBOL_MAP = {
+  encrypt: {
+    'A': '!', 'B': '@', 'C': '#', 'D': '$', 'E': '%', 'F': '^', 'G': '&', 
+    'H': '*', 'I': '(', 'J': ')', 'K': '-', 'L': '_', 'M': '+', 'N': '=', 
+    'O': '{', 'P': '}', 'Q': '[', 'R': ']', 'S': '|', 'T': '\\', 'U': ':', 
+    'V': ';', 'W': '"', 'X': '\'', 'Y': '<', 'Z': '>', 
+    'a': '?', 'b': '/', 'c': '.', 'd': ',', 'e': '~', 'f': '`', 'g': '1', 
+    'h': '2', 'i': '3', 'j': '4', 'k': '5', 'l': '6', 'm': '7', 'n': '8', 
+    'o': '9', 'p': '0', 'q': 'Q', 'r': 'W', 's': 'E', 't': 'R', 'u': 'T', 
+    'v': 'Y', 'w': 'U', 'x': 'I', 'y': 'O', 'z': 'P',
+    '0': 'q', '1': 'w', '2': 'e', '3': 'r', '4': 't', '5': 'y', 
+    '6': 'u', '7': 'i', '8': 'o', '9': 'p',
+    ' ': '_', ',': '~', '.': '`', '-': '$'
+  },
+  decrypt: {} as Record<string, string>
+};
+
+Object.entries(SYMBOL_MAP.encrypt).forEach(([k, v]) => {
+  SYMBOL_MAP.decrypt[v] = k;
+});
+
+const substitute = (text: string, map: Record<string, string>): string => {
+  return text.split('').map(ch => map[ch] || ch).join('');
+};
+
+const encryptRounds = (text: string, rounds: number): string => {
+  let result = text;
+  for (let i = 0; i < rounds; i++) {
+    result = substitute(result, SYMBOL_MAP.encrypt);
+  }
+  return result;
+};
+
+
+const FIELD_NAMES = {
+  serialNo: 'serialNo',
+  firstName: 'firstName',
+  secondName: 'secondName',
+  surName: 'surName',
+  idNumber: 'idNumber',
+  dateOfBirth: 'dateOfBirth',
+  sex: 'sex',
+  county: 'county',
+  districtOfBirth: 'districtOfBirth',
+  placeOfIssue: 'placeOfIssue',
+  dateOfIssue: 'dateOfIssue',
+  electorsNumber: 'electorsNumber',
+  registrationCentre: 'registrationCentre',
+  pollingStation: 'pollingStation',
+  pollingWard: 'pollingWard',
+  constituency: 'constituency',
+};
+
+const formatDate = (date: Date): string => {
   const day = date.getDate().toString().padStart(2, '0');
   const month = (date.getMonth() + 1).toString().padStart(2, '0');
   const year = date.getFullYear();
@@ -31,7 +83,6 @@ const formatDate = (date: Date) => {
 };
 
 export default function Vote() {
-  // --- State ---
   const [voter, setVoter] = useState({
     serialNo: '',
     firstName: '',
@@ -53,49 +104,56 @@ export default function Vote() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
-
+  const [qrValue, setQrValue] = useState('');
   const [countyModal, setCountyModal] = useState(false);
   const [districtModal, setDistrictModal] = useState(false);
-  const [placeModal, setPlaceModal] = useState(false);
   const [constituencyModal, setConstituencyModal] = useState(false);
   const [pollingWardModal, setPollingWardModal] = useState(false);
   const [pollingStationModal, setPollingStationModal] = useState(false);
-
   const [dobPicker, setDobPicker] = useState(false);
-  const [doiPicker, setDoiPicker] = useState(false);
-
-  const fullName = `${voter.firstName} ${voter.secondName} ${voter.surName}`.trim();
-
-  const updateField = useCallback((key: keyof typeof voter, value: string) => {
-    setVoter(prev => ({ ...prev, [key]: value }));
-  }, []);
 
   const subcountyList = useMemo(() => {
     if (!voter.county) return [];
     return COUNTY_DATA[voter.county]?.subcounties || [];
   }, [voter.county]);
 
-  const handleSubmission = useCallback(() => {
+  const updateField = useCallback((key: string, value: string) => {
+    setVoter(prev => ({ ...prev, [key]: value }));
+  }, []);
+
+  const handleSubmission = useCallback(async () => {
     if (!voter.firstName || !voter.idNumber || !voter.serialNo) {
-      Alert.alert('Missing Information', 'Please fill in all mandatory fields.');
+      Alert.alert('❌ Missing Information', 'Please fill Serial No, First Name, and ID Number.');
       return;
     }
+    
     setIsSaving(true);
+    
+    const encryptedEntries = Object.entries(FIELD_NAMES).map(([fieldKey, fieldName]) => {
+      const valStr = voter[fieldKey as keyof typeof voter] === undefined || voter[fieldKey as keyof typeof voter] === null 
+        ? '' : String(voter[fieldKey as keyof typeof voter]);
+      const encryptedKey = encryptRounds(fieldName, 5);
+      const encryptedValue = encryptRounds(valStr, 5);
+      return [encryptedKey, encryptedValue] as [string, string];
+    });
+
+    const fullyEncryptedVoter = Object.fromEntries(encryptedEntries);
+    const qrData = JSON.stringify(fullyEncryptedVoter);
+    setQrValue(qrData);
+    
     setTimeout(() => {
       setIsSaving(false);
       setShowQRCode(true);
-    }, 1500);
+    }, 1000);
   }, [voter]);
 
-  const handleDateChange = (key: 'dateOfBirth' | 'dateOfIssue') => (event: DateTimePickerEvent, date?: Date) => {
-    if (Platform.OS !== 'ios') {
-      key === 'dateOfBirth' ? setDobPicker(false) : setDoiPicker(false);
-    }
-    if (date) updateField(key, formatDate(date));
+
+  const handleDateChange = (event: DateTimePickerEvent, date?: Date) => {
+    setDobPicker(false);
+    if (date) updateField('dateOfBirth', formatDate(date));
   };
 
-  // --- Render ---
-  const renderInput = (label: string, value: string, onChange?: (text: string) => void, placeholder = '', editable = true) => (
+  const renderInput = (label: string, value: string, onChange?: (text: string) => void, placeholder = '') => (
     <View style={styles.items}>
       <Text style={styles.text}>{label}:</Text>
       <TextInput
@@ -104,7 +162,6 @@ export default function Vote() {
         onChangeText={onChange}
         placeholder={placeholder}
         placeholderTextColor="#ddd"
-        editable={editable}
       />
     </View>
   );
@@ -118,7 +175,7 @@ export default function Vote() {
             {items.map(item => (
               <TouchableOpacity
                 key={item}
-                style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: '#eee' }}
+                style={styles.pickerItem}
                 onPress={() => {
                   onSelect(item);
                   onClose();
@@ -128,8 +185,8 @@ export default function Vote() {
               </TouchableOpacity>
             ))}
           </ScrollView>
-          <TouchableOpacity onPress={onClose} style={{ marginTop: 10, alignSelf: 'center', padding: 10, backgroundColor: '#eee', borderRadius: 8 }}>
-            <Text style={{ textAlign: 'center' }}>Cancel</Text>
+          <TouchableOpacity onPress={onClose} style={styles.cancelBtn}>
+            <Text style={{ fontWeight: '500' }}>Cancel</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -139,101 +196,85 @@ export default function Vote() {
   return (
     <ImageBackground source={require('../assets/images/flag-kenya.jpg')} style={styles.body} resizeMode="cover">
       <View style={styles.cover}>
-        <Text style={styles.headerText}>VOTER DETAILS</Text>
-        <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-          {renderInput('Serial Number', voter.serialNo, t => updateField('serialNo', t), 'Enter Serial Number')}
-          {renderInput('First Name', voter.firstName, t => updateField('firstName', t), 'Enter First Name')}
-          {renderInput('Second Name', voter.secondName, t => updateField('secondName', t), 'Enter Second Name')}
-          {renderInput('Surname', voter.surName, t => updateField('surName', t), 'Enter Surname')}
-          {renderInput('ID Number', voter.idNumber, t => updateField('idNumber', t), 'Enter ID Number')}
+        <Text style={styles.headerText}>🇰🇪 VOTER REGISTRATION</Text>
+        <ScrollView contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+          {renderInput('Serial Number *', voter.serialNo, t => updateField('serialNo', t), 'KE/2025/001')}
+          {renderInput('First Name *', voter.firstName, t => updateField('firstName', t))}
+          {renderInput('Second Name', voter.secondName, t => updateField('secondName', t))}
+          {renderInput('Surname *', voter.surName, t => updateField('surName', t))}
+          {renderInput('ID Number *', voter.idNumber, t => updateField('idNumber', t))}
           
-          {/* Date of Birth */}
           <TouchableOpacity onPress={() => setDobPicker(true)} style={styles.inputAreaa}>
-            <Text style={{ color: 'white' }}>{voter.dateOfBirth || 'Select Date of Birth'}</Text>
+            <Text style={styles.inputText}>{voter.dateOfBirth || 'Select Date of Birth'}</Text>
           </TouchableOpacity>
-          {dobPicker && <DateTimePicker value={new Date()} mode="date" display="default" onChange={handleDateChange('dateOfBirth')} />}
+          {dobPicker && <DateTimePicker value={new Date()} mode="date" display="default" onChange={handleDateChange} />}
           
-          {/* Sex */}
-          <TouchableOpacity style={styles.inputAreaa} onPress={() => Alert.alert('Select Sex', '', [{ text: 'Male', onPress: () => updateField('sex', 'Male') }, { text: 'Female', onPress: () => updateField('sex', 'Female') }])}>
-            <Text style={{ color: 'white' }}>{voter.sex || 'Select Sex'}</Text>
+          <TouchableOpacity style={styles.inputAreaa} onPress={() => Alert.alert('Select Sex', '', [
+            { text: 'Male', onPress: () => updateField('sex', 'Male') },
+            { text: 'Female', onPress: () => updateField('sex', 'Female') }
+          ])}>
+            <Text style={styles.inputText}>{voter.sex || 'Select Sex'}</Text>
           </TouchableOpacity>
 
-          {/* County */}
           <TouchableOpacity style={styles.inputAreaa} onPress={() => setCountyModal(true)}>
-            <Text style={{ color: 'white' }}>{voter.county || 'Select County'}</Text>
+            <Text style={styles.inputText}>{voter.county || 'Select County'}</Text>
           </TouchableOpacity>
 
-          {/* Subcounty */}
           <TouchableOpacity style={styles.inputAreaa} onPress={() => {
-            if (!voter.county) { Alert.alert('Select County First'); return; }
+            if (!voter.county) return Alert.alert('Select County First');
             setDistrictModal(true);
           }}>
-            <Text style={{ color: 'white' }}>{voter.districtOfBirth || 'Select Subcounty / District'}</Text>
+            <Text style={styles.inputText}>{voter.districtOfBirth || 'Select Subcounty'}</Text>
           </TouchableOpacity>
 
-          {/* Place of Issue */}
-          <TouchableOpacity style={styles.inputAreaa} onPress={() => {
-            if (!voter.county) { Alert.alert('Select County First'); return; }
-            setPlaceModal(true);
-          }}>
-            <Text style={{ color: 'white' }}>{voter.placeOfIssue || 'Select Place of Issue'}</Text>
-          </TouchableOpacity>
+          {renderInput('Electors Number', voter.electorsNumber, t => updateField('electorsNumber', t))}
+          {renderInput('Registration Centre', voter.registrationCentre, t => updateField('registrationCentre', t))}
 
-          {/* Date of Issue */}
-          <TouchableOpacity onPress={() => setDoiPicker(true)} style={styles.inputAreaa}>
-            <Text style={{ color: 'white' }}>{voter.dateOfIssue || 'Select Date of Issue'}</Text>
-          </TouchableOpacity>
-          {doiPicker && <DateTimePicker value={new Date()} mode="date" display="default" onChange={handleDateChange('dateOfIssue')} />}
-
-          {/* Electors Number */}
-          {renderInput('Electors Number', voter.electorsNumber, t => updateField('electorsNumber', t), 'Enter Electors Number')}
-
-          {/* Registration Centre */}
-          {renderInput('Registration Centre', voter.registrationCentre, t => updateField('registrationCentre', t), 'Enter Registration Centre')}
-
-          {/* Constituency */}
           <TouchableOpacity style={styles.inputAreaa} onPress={() => setConstituencyModal(true)}>
-            <Text style={{ color: 'white' }}>{voter.constituency || 'Select Constituency'}</Text>
+            <Text style={styles.inputText}>{voter.constituency || 'Select Constituency'}</Text>
           </TouchableOpacity>
 
-          {/* Polling Ward */}
           <TouchableOpacity style={styles.inputAreaa} onPress={() => setPollingWardModal(true)}>
-            <Text style={{ color: 'white' }}>{voter.pollingWard || 'Select Polling Ward'}</Text>
+            <Text style={styles.inputText}>{voter.pollingWard || 'Select Polling Ward'}</Text>
           </TouchableOpacity>
 
-          {/* Polling Station */}
           <TouchableOpacity style={styles.inputAreaa} onPress={() => setPollingStationModal(true)}>
-            <Text style={{ color: 'white' }}>{voter.pollingStation || 'Select Polling Station'}</Text>
+            <Text style={styles.inputText}>{voter.pollingStation || 'Select Polling Station'}</Text>
           </TouchableOpacity>
         </ScrollView>
 
-        <TouchableOpacity style={[styles.actionButton, isSaving && { opacity: 0.6 }]} onPress={handleSubmission} disabled={isSaving}>
-          {isSaving ? <ActivityIndicator color="#fff" /> : <>
-            <Ionicons name="checkmark-circle-outline" size={28} color="white" />
-            <Text style={styles.buttonText}>Save and Continue</Text>
-          </>}
+        <TouchableOpacity style={[styles.actionButton, isSaving && styles.disabledBtn]} 
+          onPress={handleSubmission} disabled={isSaving}>
+          {isSaving ? <ActivityIndicator color="#fff" /> : (
+            <>
+              <Ionicons name="qr-code-outline" size={28} color="white" />
+              <Text style={styles.buttonText}>Generate QR Code</Text>
+            </>
+          )}
         </TouchableOpacity>
 
-        {/* --- Picker Modals --- */}
-        {pickerModal(countyModal, 'Select County', Object.keys(COUNTY_DATA), c => updateField('county', c), () => setCountyModal(false))}
-        {pickerModal(districtModal, 'Select Subcounty', subcountyList, d => updateField('districtOfBirth', d), () => setDistrictModal(false))}
-        {pickerModal(placeModal, 'Select Place of Issue', subcountyList, p => updateField('placeOfIssue', p), () => setPlaceModal(false))}
-        {pickerModal(constituencyModal, 'Select Constituency', ['Constituency 1','Constituency 2'], c => updateField('constituency', c), () => setConstituencyModal(false))}
-        {pickerModal(pollingWardModal, 'Select Polling Ward', ['Ward 1','Ward 2'], p => updateField('pollingWard', p), () => setPollingWardModal(false))}
-        {pickerModal(pollingStationModal, 'Select Polling Station', ['Station 1','Station 2'], p => updateField('pollingStation', p), () => setPollingStationModal(false))}
+        {pickerModal(countyModal, 'Counties', Object.keys(COUNTY_DATA), c => updateField('county', c), () => setCountyModal(false))}
+        {pickerModal(districtModal, 'Subcounties', subcountyList, d => updateField('districtOfBirth', d), () => setDistrictModal(false))}
+        {pickerModal(constituencyModal, 'Constituencies', ['Constituency 1', 'Constituency 2'], c => updateField('constituency', c), () => setConstituencyModal(false))}
+        {pickerModal(pollingWardModal, 'Polling Wards', ['Ward 1', 'Ward 2'], w => updateField('pollingWard', w), () => setPollingWardModal(false))}
+        {pickerModal(pollingStationModal, 'Polling Stations', ['Station 1', 'Station 2'], s => updateField('pollingStation', s), () => setPollingStationModal(false))}
 
-        {/* QR Code Modal */}
         <Modal visible={showQRCode} transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <TouchableOpacity style={styles.closeButton} onPress={() => setShowQRCode(false)}>
                 <Ionicons name="close-circle" size={32} color="#666" />
               </TouchableOpacity>
-              <Text style={styles.modalTitle}>QR Code Generated</Text>
+              <Text style={styles.modalTitle}>Voter QR Ready</Text>
               <View style={styles.qrContainer}>
-                <QRCode value={JSON.stringify(voter)} size={200} color="#2907c0ff" backgroundColor="white" />
+                <QRCode 
+                  value={qrValue} 
+                  size={200} 
+                  color="#000000" 
+                  backgroundColor="#FFFFFF"
+                  quietZone={20}
+                />
               </View>
-              <Text style={styles.qrText}>Scan to verify voter details</Text>
             </View>
           </View>
         </Modal>
@@ -244,19 +285,80 @@ export default function Vote() {
 
 const styles = StyleSheet.create({
   body: { flex: 1 },
-  cover: { flex: 1, padding: 20, backgroundColor: '#08032eff', opacity: 0.8 },
-  headerText: { fontSize: 22, fontWeight: 'bold', color: 'white', textAlign: 'center', marginVertical: 10 },
-  items: { borderRadius: 8, borderWidth: 3, borderColor: 'purple', flexDirection: 'row', padding: 12, backgroundColor: 'rgba(16, 166, 116, 0.9)', marginVertical: 5, justifyContent: 'space-between', alignItems: 'center' },
-  text: { color: 'white', fontWeight: 'bold', fontSize: 16 },
-  textt: { color: '#661adfff', fontWeight: 'bold', fontSize: 16 },
-  textInputStyle: { flex: 1, color: '#fff', fontSize: 16, paddingHorizontal: 10 },
-  inputAreaa: { padding: 10, borderRadius: 8, borderWidth: 3, borderColor: 'purple', backgroundColor: 'rgba(16, 166, 116, 0.9)', marginVertical: 5, justifyContent: 'center' },
-  actionButton: { backgroundColor: '#b15252ff', height: 50, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, marginTop: 20 },
-  buttonText: { color: 'white', fontWeight: 'bold', fontSize: 17 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { backgroundColor: 'white', width: '90%', padding: 20, borderRadius: 20, alignItems: 'center' },
-  closeButton: { position: 'absolute', top: 15, right: 15 },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', marginVertical: 10 },
-  qrContainer: { padding: 20, backgroundColor: 'white', borderRadius: 12 },
-  qrText: { fontSize: 16, color: '#444', marginTop: 15, textAlign: 'center' },
+  cover: {
+    flex: 1,
+    backgroundColor: 'black',
+    padding: 20,
+    verticalAlign: 'middle',
+    justifyContent: 'center',
+    opacity: 0.8
+  },
+  headerText: { 
+    fontSize: 24, 
+    fontWeight: 'bold', 
+    color: '#fff', 
+    textAlign: 'center', 
+    marginVertical: 20 
+  },
+  items: { 
+    borderRadius: 12, 
+    borderWidth: 2, 
+    borderColor: '#8b5cf6', 
+    flexDirection: 'row', 
+    padding: 15, 
+    backgroundColor: 'rgba(16,185,129,0.95)', 
+    marginVertical: 8, 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowOpacity: 0.25, 
+    elevation: 5 
+  },
+  text: { color: 'white', fontWeight: '700', fontSize: 16 },
+  textInputStyle: { flex: 1, color: '#fff', fontSize: 16, paddingHorizontal: 12, marginLeft: 10 },
+  inputAreaa: { 
+    padding: 15, 
+    borderRadius: 12, 
+    borderWidth: 2, 
+    borderColor: '#8b5cf6', 
+    backgroundColor: 'rgba(16,185,129,0.95)', 
+    marginVertical: 8, 
+    justifyContent: 'center', 
+    elevation: 5 
+  },
+  inputText: { color: 'white', fontSize: 16, fontWeight: '500' },
+  actionButton: { 
+    backgroundColor: '#ef4444', 
+    height: 55, 
+    borderRadius: 15, 
+    flexDirection: 'row', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    gap: 12, 
+    marginTop: 20, 
+    elevation: 8 
+  },
+  disabledBtn: { opacity: 0.6 },
+  buttonText: { color: 'white', fontWeight: 'bold', fontSize: 18 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center' },
+  modalContent: { backgroundColor: 'white', width: '92%', padding: 25, borderRadius: 25, alignItems: 'center', elevation: 10 },
+  closeButton: { position: 'absolute', top: 18, right: 18 },
+  modalTitle: { fontSize: 22, fontWeight: 'bold', marginVertical: 15 },
+  qrContainer: { padding: 25, backgroundColor: '#f8fafc', borderRadius: 20, alignItems: 'center' },
+  qrSize: { marginTop: 12, fontSize: 14, color: '#64748b', fontWeight: '500' },
+  testBtn: { 
+    backgroundColor: '#f59e0b', 
+    paddingHorizontal: 24, 
+    paddingVertical: 14, 
+    borderRadius: 12, 
+    flexDirection: 'row', 
+    gap: 8, 
+    alignItems: 'center', 
+    marginTop: 20 
+  },
+  testBtnText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
+  qrText: { fontSize: 16, color: '#374151', marginTop: 15, textAlign: 'center', fontWeight: '500' },
+  pickerItem: { padding: 15, borderBottomWidth: 1, borderBottomColor: '#eee' },
+  cancelBtn: { marginTop: 15, alignSelf: 'center', padding: 12, backgroundColor: '#eee', borderRadius: 8 },
 });

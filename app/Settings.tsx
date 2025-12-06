@@ -44,10 +44,11 @@ const styles = StyleSheet.create({
   },
   cover: {
     flex: 1,
-    backgroundColor: '#08032eff',
+    backgroundColor: 'black',
     padding: 20,
+    verticalAlign: 'middle',
     justifyContent: 'center',
-    opacity: 0.7,
+    opacity: 0.8
   },
   headerText: {
     fontSize: 22,

@@ -4,6 +4,59 @@ import QRCode from 'react-native-qrcode-svg';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { getProfile, subscribeToProfileChanges, UnifiedProfile } from '../lib/storageHelper';
 
+const SYMBOL_MAP = {
+  encrypt: {
+    'A': '!', 'B': '@', 'C': '#', 'D': '$', 'E': '%', 'F': '^', 'G': '&', 
+    'H': '*', 'I': '(', 'J': ')', 'K': '-', 'L': '_', 'M': '+', 'N': '=', 
+    'O': '{', 'P': '}', 'Q': '[', 'R': ']', 'S': '|', 'T': '\\', 'U': ':', 
+    'V': ';', 'W': '"', 'X': '\'', 'Y': '<', 'Z': '>', 
+    'a': '?', 'b': '/', 'c': '.', 'd': ',', 'e': '~', 'f': '`', 'g': '1', 
+    'h': '2', 'i': '3', 'j': '4', 'k': '5', 'l': '6', 'm': '7', 'n': '8', 
+    'o': '9', 'p': '0', 'q': 'Q', 'r': 'W', 's': 'E', 't': 'R', 'u': 'T', 
+    'v': 'Y', 'w': 'U', 'x': 'I', 'y': 'O', 'z': 'P',
+    '0': 'q', '1': 'w', '2': 'e', '3': 'r', '4': 't', '5': 'y', 
+    '6': 'u', '7': 'i', '8': 'o', '9': 'p',
+    ' ': '_', ',': '~', '.': '`', '-': '$'
+  },
+  decrypt: {} as Record<string, string>
+};
+
+Object.entries(SYMBOL_MAP.encrypt).forEach(([k, v]) => {
+  SYMBOL_MAP.decrypt[v] = k;
+});
+
+const substitute = (text: string, map: Record<string, string>): string => {
+  return text.split('').map(ch => map[ch] || ch).join('');
+};
+
+const encryptRounds = (text: string, rounds: number): string => {
+  let result = text;
+  for (let i = 0; i < rounds; i++) {
+    result = substitute(result, SYMBOL_MAP.encrypt);
+  }
+  return result;
+};
+
+const FIELD_NAMES = {
+  serialNo: 'serialNo',
+  firstName: 'firstName',
+  lastName: 'lastName',
+  surname: 'surname',
+  idNumber: 'idNumber',
+  dateOfBirth: 'dateOfBirth',
+  sex: 'sex',
+  districtOfBirth: 'districtOfBirth',
+  placeOfIssue: 'placeOfIssue',
+  dateOfIssue: 'dateOfIssue',
+  electorsNumber: 'electorsNumber',
+  fullName: 'fullName',
+  registrationCentre: 'registrationCentre',
+  pollingStation: 'pollingStation',
+  pollingWard: 'pollingWard',
+  constituency: 'constituency',
+  county: 'county',
+};
+
 export default function QRCodeScreen() {
   const [detailsString, setDetailsString] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -14,33 +67,16 @@ export default function QRCodeScreen() {
       const profile: UnifiedProfile | null = await getProfile();
       
       if (profile) {
-        // ✅ COMPATIBLE WITH UNIFIED PROFILE - ALL FIELDS SYNCED
-        const qrData = {
-          // ID Details
-          serialNo: profile.serialNo,
-          firstName: profile.firstName,
-          lastName: profile.lastName,
-          surname: profile.surname,
-          idNumber: profile.idNumber,
-          dateOfBirth: profile.dateOfBirth,
-          sex: profile.sex,
-          districtOfBirth: profile.districtOfBirth,
-          placeOfIssue: profile.placeOfIssue,
-          dateOfIssue: profile.dateOfIssue,
-          
-          // Voter Details
-          electorsNumber: profile.electorsNumber,
-          fullName: profile.fullName,
-          
-          // Geo Details
-          registrationCentre: profile.registrationCentre,
-          pollingStation: profile.pollingStation,
-          pollingWard: profile.pollingWard,
-          constituency: profile.constituency,
-          county: profile.county,
-        };
-        
-        setDetailsString(JSON.stringify(qrData, null, 2));
+        const encryptedEntries = Object.entries(FIELD_NAMES).map(([fieldKey, fieldName]) => {
+          const valStr = profile[fieldKey as keyof UnifiedProfile] === undefined || profile[fieldKey as keyof UnifiedProfile] === null 
+            ? '' : String(profile[fieldKey as keyof UnifiedProfile]);
+          const encryptedKey = encryptRounds(fieldName, 5);
+          const encryptedValue = encryptRounds(valStr, 5);
+          return [encryptedKey, encryptedValue] as [string, string];
+        });
+
+        const fullyEncryptedProfile = Object.fromEntries(encryptedEntries);
+        setDetailsString(JSON.stringify(fullyEncryptedProfile));
       } else {
         setDetailsString('');
       }
@@ -52,7 +88,6 @@ export default function QRCodeScreen() {
     }
   }, []);
 
-  // ✅ LIVE SYNC - Updates when ANY screen (ID/VoterD/GeoSett) saves
   useEffect(() => {
     loadProfileForQR();
     const unsubscribe = subscribeToProfileChanges(loadProfileForQR);
